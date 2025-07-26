@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Dependency files (optional if you're using .env to manage them)
+.env
+.env.*
+
+# Logs and runtime
+*.log
+*.sqlite3
+*.db
+
+# Test and coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+# MyPy, Pylint, Ruff, Bandit
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node / frontend (adjust if you're using something else like Vite, Next.js etc.)
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# Uploads / temp
+uploads/
+media/
+static/
+*.bak
+*~
+
+# Alembic migrations (optional)
+alembic/versions/
+migrations/versions/
+
+# Jupyter
+.ipynb_checkpoints/
