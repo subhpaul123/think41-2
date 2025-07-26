@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from database import Base, engine
-from models import Product  # makes sure model is registered
+from models import Product, User, Conversation, Message
 
 app = FastAPI()
 
