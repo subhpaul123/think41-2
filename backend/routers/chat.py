@@ -5,6 +5,14 @@ from database import SessionLocal
 from models.user import User
 from models.conversation import Conversation
 from models.message import Message
+import httpx
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+print("🔐 GROQ_API_KEY:", os.getenv("GROQ_API_KEY"))
+
 
 router = APIRouter()
 
@@ -25,9 +33,34 @@ def get_db():
     finally:
         db.close()
 
+def generate_ai_reply(message: str) -> str:
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": "You are a helpful e-commerce support assistant."},
+            {"role": "user", "content": message}
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        response = httpx.post(url, json=payload, headers=headers, timeout=10)
+        print("✅ Groq status:", response.status_code)
+        print("📦 Groq response:", response.text)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        print("❌ Groq error:", e)
+        return "Sorry, I'm unable to generate a response right now."
+
 @router.post("/api/chat", response_model=ChatResponse)
 def chat(request: ChatRequest, db: Session = Depends(get_db)):
-    # Check if user exists; create if not
+    # Auto-create user
     user = db.query(User).filter(User.id == request.user_id).first()
     if not user:
         user = User(
@@ -39,7 +72,7 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
-    # Create conversation if not provided
+    # Auto-create conversation
     if request.conversation_id is None:
         conversation = Conversation(user_id=user.id)
         db.add(conversation)
@@ -58,8 +91,8 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     )
     db.add(user_msg)
 
-    # Dummy AI response
-    ai_reply = f"You said: {request.message}"
+    # AI response via Groq
+    ai_reply = generate_ai_reply(request.message)
     ai_msg = Message(
         conversation_id=conversation.id,
         sender="ai",
@@ -74,12 +107,3 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         "user_message": request.message,
         "ai_message": ai_reply
     }
-
-
-@router.get("/api/messages/{conversation_id}")
-def get_messages(conversation_id: int, db: Session = Depends(get_db)):
-    messages = db.query(Message).filter(Message.conversation_id == conversation_id).order_by(Message.timestamp).all()
-    return [
-        {"sender": m.sender, "content": m.content, "timestamp": m.timestamp}
-        for m in messages
-    ]
