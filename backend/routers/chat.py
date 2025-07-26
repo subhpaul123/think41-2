@@ -13,10 +13,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-print("🔐 GROQ_API_KEY:", GROQ_API_KEY)
 
 router = APIRouter()
-
 
 # ------------------------
 # Request + Response Schemas
@@ -63,7 +61,7 @@ def generate_ai_reply(message: str) -> str:
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile",  # ✅ use correct model
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": "You are a helpful e-commerce support assistant."},
             {"role": "user", "content": message}
@@ -73,8 +71,6 @@ def generate_ai_reply(message: str) -> str:
 
     try:
         response = httpx.post(url, json=payload, headers=headers, timeout=10)
-        print("✅ Groq status:", response.status_code)
-        print("📦 Groq response:", response.text)
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
@@ -110,22 +106,25 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         if not conversation:
             raise HTTPException(status_code=404, detail="Invalid conversation ID")
 
-    # Save user message
-    user_msg = Message(
-        conversation_id=conversation.id,
-        sender="user",
-        content=request.message
-    )
-    db.add(user_msg)
+    if request.message.strip():
+        # Save user message
+        user_msg = Message(
+            conversation_id=conversation.id,
+            sender="user",
+            content=request.message
+        )
+        db.add(user_msg)
 
-    # Generate AI response
-    ai_reply = generate_ai_reply(request.message)
-    ai_msg = Message(
-        conversation_id=conversation.id,
-        sender="ai",
-        content=ai_reply
-    )
-    db.add(ai_msg)
+        # Generate AI response
+        ai_reply = generate_ai_reply(request.message)
+        ai_msg = Message(
+            conversation_id=conversation.id,
+            sender="ai",
+            content=ai_reply
+        )
+        db.add(ai_msg)
+    else:
+        ai_reply = ""
 
     db.commit()
 
@@ -144,12 +143,22 @@ def get_conversation_history(
     conversation_id: int = Path(..., title="Conversation ID"),
     db: Session = Depends(get_db)
 ):
+    conversation = db.query(Conversation).filter_by(id=conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
     messages = (
         db.query(Message)
         .filter(Message.conversation_id == conversation_id)
         .order_by(Message.timestamp)
         .all()
     )
-    if not messages:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return messages
+    return messages 
+
+# ------------------------
+# GET /api/conversations
+# ------------------------
+
+@router.get("/api/conversations")
+def list_conversations(db: Session = Depends(get_db)):
+    return db.query(Conversation).order_by(Conversation.created_at.desc()).all()
