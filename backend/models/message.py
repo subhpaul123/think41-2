@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, ForeignKey, Text, DateTime, func, String
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
+from sqlalchemy.orm import relationship
+from datetime import datetime
 from database import Base
 
 class Message(Base):
@@ -6,6 +8,8 @@ class Message(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     conversation_id = Column(Integer, ForeignKey("conversations.id"))
-    sender = Column(String)  # 'user' or 'ai'
-    content = Column(Text)
-    timestamp = Column(DateTime, default=func.now())
+    sender = Column(String)
+    content = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("Conversation", back_populates="messages")

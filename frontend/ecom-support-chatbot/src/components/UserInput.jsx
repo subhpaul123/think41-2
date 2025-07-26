@@ -5,10 +5,20 @@ import axios from "axios";
 
 export default function UserInput() {
   const [text, setText] = useState("");
-  const { messages, setMessages, setLoading } = useChat();
+  const {
+    messages,
+    setMessages,
+    setLoading,
+    conversationId,
+  } = useChat(); // ✅ Now using conversationId from context
 
   const sendMessage = async () => {
     if (!text.trim()) return;
+
+    if (!conversationId) {
+      alert("Please start or select a conversation.");
+      return;
+    }
 
     const newMsg = { sender: "user", content: text };
     setMessages([...messages, newMsg]);
@@ -19,7 +29,7 @@ export default function UserInput() {
       const response = await axios.post("http://127.0.0.1:8000/api/chat", {
         user_id: 1,
         message: text,
-        conversation_id: 1, // optional
+        conversation_id: conversationId, // ✅ Now dynamic
       });
 
       const aiMsg = {
@@ -27,9 +37,9 @@ export default function UserInput() {
         content: response.data.ai_message,
       };
 
-      setMessages(prev => [...prev, aiMsg]);
+      setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Failed to send message:", err);
     } finally {
       setLoading(false);
     }
@@ -45,7 +55,9 @@ export default function UserInput() {
         style={styles.input}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
       />
-      <button onClick={sendMessage} style={styles.button}>Send</button>
+      <button onClick={sendMessage} style={styles.button}>
+        Send
+      </button>
     </div>
   );
 }
